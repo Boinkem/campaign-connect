@@ -458,21 +458,23 @@
     var target = fullUrl(conn);
 
     if(canIframe(target)){
-      var frame = document.getElementById('content-frame');
-      frame.src = target;
-      document.getElementById('webview-screen').classList.add('show');
-    } else {
+  var frame = document.getElementById('content-frame');
+  frame.src = target;
+  document.getElementById('webview-screen').classList.add('show');
+  document.getElementById('fab-add').style.display = 'none';   // add this line
+} else {
       // Browser + local http address: leave the launcher page entirely.
       // Use your phone's back gesture / back button afterward to return here.
       window.location.href = target;
     }
   }
 
-  function backToLauncher(){
-    document.getElementById('webview-screen').classList.remove('show');
-    document.getElementById('content-frame').src = 'about:blank';
-    render();
-  }
+ function backToLauncher(){
+  document.getElementById('webview-screen').classList.remove('show');
+  document.getElementById('content-frame').src = 'about:blank';
+  document.getElementById('fab-add').style.display = '';   // add this line
+  render();
+}
 
   function reloadFrame(){
     var frame = document.getElementById('content-frame');
