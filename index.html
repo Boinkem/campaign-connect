@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#101017">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <!-- iOS "Add to Home Screen" standalone mode -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -167,6 +167,32 @@
     z-index:50;
   }
   .fab:active{ transform:scale(0.94); }
+  .fab.hidden{ display:none; }
+
+  /* ---------- INSTALL BANNER ---------- */
+  #install-banner{
+    display:none;
+    align-items:center;
+    gap:12px;
+    background:linear-gradient(145deg, var(--card2), var(--card));
+    border:1px solid rgba(212,168,67,0.35);
+    border-radius:14px;
+    padding:14px 14px;
+    margin-bottom:16px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.3);
+  }
+  #install-banner.show{ display:flex; }
+  #install-banner .install-icon{ font-size:1.6em; flex-shrink:0; }
+  #install-banner .install-copy{ flex:1; min-width:0; }
+  #install-banner .install-title{ font-weight:700; font-size:0.95em; margin-bottom:2px; }
+  #install-banner .install-sub{ color:var(--sub); font-size:0.8em; line-height:1.4; }
+  #install-banner .install-actions{ display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  #install-banner button{
+    border:none; border-radius:9px; font-weight:700; font-size:0.82em;
+    padding:8px 12px; cursor:pointer; white-space:nowrap;
+  }
+  #install-banner .install-go{ background:linear-gradient(145deg, var(--gold), var(--goldL)); color:#20180a; }
+  #install-banner .install-dismiss{ background:transparent; color:var(--sub); }
 
   /* ---------- EDITOR SHEET ---------- */
   #editor-backdrop{
@@ -268,6 +294,18 @@
   <div id="launcher">
     <div class="app-title">Campaign Connect</div>
     <div class="app-subtitle">Jump into your DM or Player view</div>
+
+    <div id="install-banner">
+      <div class="install-icon">📲</div>
+      <div class="install-copy">
+        <div class="install-title" id="install-title">Install this app</div>
+        <div class="install-sub" id="install-sub">Add it to your home screen for full-screen, no-address-bar access.</div>
+      </div>
+      <div class="install-actions" id="install-actions">
+        <button class="install-go" id="install-go">Install</button>
+        <button class="install-dismiss" id="install-dismiss">Not now</button>
+      </div>
+    </div>
 
     <div id="last-connection-area"></div>
 
@@ -458,23 +496,23 @@
     var target = fullUrl(conn);
 
     if(canIframe(target)){
-  var frame = document.getElementById('content-frame');
-  frame.src = target;
-  document.getElementById('webview-screen').classList.add('show');
-  document.getElementById('fab-add').style.display = 'none';   // add this line
-} else {
+      var frame = document.getElementById('content-frame');
+      frame.src = target;
+      document.getElementById('webview-screen').classList.add('show');
+      document.getElementById('fab-add').classList.add('hidden');
+    } else {
       // Browser + local http address: leave the launcher page entirely.
       // Use your phone's back gesture / back button afterward to return here.
       window.location.href = target;
     }
   }
 
- function backToLauncher(){
-  document.getElementById('webview-screen').classList.remove('show');
-  document.getElementById('content-frame').src = 'about:blank';
-  document.getElementById('fab-add').style.display = '';   // add this line
-  render();
-}
+  function backToLauncher(){
+    document.getElementById('webview-screen').classList.remove('show');
+    document.getElementById('content-frame').src = 'about:blank';
+    document.getElementById('fab-add').classList.remove('hidden');
+    render();
+  }
 
   function reloadFrame(){
     var frame = document.getElementById('content-frame');
@@ -611,6 +649,47 @@
     window.addEventListener('load', function(){
       navigator.serviceWorker.register('service-worker.js').catch(function(){});
     });
+  }
+
+  // ---------- install banner ----------
+  var DISMISS_KEY = 'ccx_install_dismissed_v1';
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                      window.navigator.standalone === true;
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  function dismissBanner(){
+    localStorage.setItem(DISMISS_KEY, '1');
+    document.getElementById('install-banner').classList.remove('show');
+  }
+  document.getElementById('install-dismiss').addEventListener('click', dismissBanner);
+
+  if(!isStandalone && !localStorage.getItem(DISMISS_KEY)){
+    if(isIOS){
+      // No install API on iOS — show manual steps and skip the button.
+      document.getElementById('install-sub').textContent =
+        'Tap the Share icon below, then "Add to Home Screen".';
+      document.getElementById('install-actions').removeChild(document.getElementById('install-go'));
+      document.getElementById('install-banner').classList.add('show');
+    } else {
+      var deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e){
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('install-banner').classList.add('show');
+      });
+      document.getElementById('install-go').addEventListener('click', function(){
+        if(!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function(){
+          deferredPrompt = null;
+          document.getElementById('install-banner').classList.remove('show');
+        });
+      });
+      window.addEventListener('appinstalled', function(){
+        document.getElementById('install-banner').classList.remove('show');
+      });
+    }
   }
 })();
 </script>
