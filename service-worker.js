@@ -3,7 +3,7 @@
 // allowing standalone display mode. It caches nothing dynamic, so the
 // launcher shell always loads fresh; the campaign server content in the
 // webview is never touched by this at all.
-const CACHE_NAME = 'campaign-connect-shell-v1';
+const CACHE_NAME = 'campaign-connect-shell-v2';
 const SHELL_FILES = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -14,7 +14,13 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys()
+      .then((names) => Promise.all(
+        names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
